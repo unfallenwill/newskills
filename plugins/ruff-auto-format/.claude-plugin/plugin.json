@@ -1,0 +1,6 @@
+{
+  "name": "ruff-auto-format",
+  "version": "1.0.0",
+  "description": "在修改 Python 文件后自动执行 ruff format 和 ruff check --fix",
+  "hooks": "./hooks/hooks.json"
+}

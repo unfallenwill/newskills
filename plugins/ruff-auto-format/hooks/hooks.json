@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=\"$TOOL_INPUT_FILE_PATH\"; [ \"${f##*.}\" = \"py\" ] || exit 0; [ -f pyproject.toml ] || { echo \"当前目录缺少 pyproject.toml。\" >&2; exit 2; }; ruff format \"$f\" && ruff check --fix \"$f\""
+          }
+        ]
+      }
+    ]
+  }
+}
