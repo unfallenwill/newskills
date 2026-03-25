@@ -2,7 +2,5 @@
   "name": "cnb-issue",
   "version": "1.0.0",
   "description": "操作 CNB (cnb.cool) 平台上的 Issue，支持创建、查询、更新、标签管理、处理人管理和评论功能",
-  "components": {
-    "skills": ["skills/*"]
-  }
+  "skills": "./skills/"
 }

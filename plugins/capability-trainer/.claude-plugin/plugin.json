@@ -2,7 +2,5 @@
   "name": "capability-trainer",
   "version": "1.0.0",
   "description": "通过实践引导学习和掌握新能力，支持快速了解、实用掌握和专家级别三个深度",
-  "components": {
-    "skills": ["skills/*"]
-  }
+  "skills": "./skills/"
 }

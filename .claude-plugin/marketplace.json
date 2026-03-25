@@ -10,13 +10,13 @@
   "plugins": [
     {
       "name": "cnb-issue",
-      "source": "./cnb-issue",
+      "source": "cnb-issue",
       "description": "操作 CNB (cnb.cool) 平台上的 Issue，支持创建、查询、更新、标签管理、处理人管理和评论功能",
       "version": "1.0.0"
     },
     {
       "name": "capability-trainer",
-      "source": "./capability-trainer",
+      "source": "capability-trainer",
       "description": "通过实践引导学习和掌握新能力，支持快速了解、实用掌握和专家级别三个深度",
       "version": "1.0.0"
     }
