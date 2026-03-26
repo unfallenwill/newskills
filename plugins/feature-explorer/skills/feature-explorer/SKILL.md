@@ -4,15 +4,14 @@ description: >-
   This skill should be used when the user asks to "explain how X works",
   "how does X work", "what is the implementation of X", "trace the code for X",
   "show me the call chain of X", "how is X implemented", "how does the X module
-  work", "what's the design of X", "walk me through X", or mentions understanding,
-  analyzing, or exploring a feature, function, module, mechanism, or design in a
-  codebase. Also triggers when the user asks about the architecture, flow, or
-  internal workings of a component. Provides a structured analysis of how a feature
-  is implemented. Do NOT use for debugging, bug fixing, or modifying code — only
-  for understanding and explaining.
-argument-hint: "[name of the feature/module to explore, e.g. login flow, payment module]"
-context: fork
-agent: Explore
+  work", "what's the design of X", "walk me through X", "explain the X feature",
+  "what does X do", "how is X built", "解释一下 X 是怎么实现的", "帮我分析 X",
+  "梳理一下 X 的设计", "X 的调用链是什么", "X 的代码流程是什么",
+  or mentions understanding, analyzing, or exploring a feature, function, module,
+  mechanism, or design in a codebase. Also triggers when the user asks about the
+  architecture, flow, or internal workings of a component. Provides a structured
+  analysis of how a feature is implemented. Do NOT use for debugging, bug fixing,
+  or modifying code -- only for understanding and explaining.
 ---
 
 ## Objective
@@ -30,6 +29,7 @@ $ARGUMENTS
 1. Use Glob and Grep to search for relevant files, functions, and classes based on the target keyword.
 2. Identify entry points: API endpoints, CLI commands, event listeners, exported functions, etc.
 3. If the target is ambiguous (e.g. "the auth system"), list candidate entry points and pick the most relevant one.
+4. If no relevant code is found, report this clearly rather than forcing an analysis.
 
 ### Phase 2: Trace the Call Chain
 
@@ -42,16 +42,16 @@ Starting from the entry point, trace function calls layer by layer:
 
 ### Phase 3: Map Data Flow
 
-- Where data comes from (user input, database, config, external API)
-- How data is transformed and processed
-- Where data ultimately goes (response, storage, side effects)
+- Identify data sources: user input, database, config, external API
+- Track data transformations and processing steps
+- Identify data destinations: response, storage, side effects
 
 ### Phase 4: Identify Key Design Decisions
 
-- Design patterns in use
-- Important abstractions and interfaces
-- Error handling strategy
-- Concurrency/async handling (if applicable)
+- Identify design patterns in use
+- Document important abstractions and interfaces
+- Describe the error handling strategy
+- Note concurrency/async handling (if applicable)
 
 ## Output Format
 
@@ -79,3 +79,4 @@ Use this structure for the report:
 - Read-only exploration — do not modify any files.
 - Every key reference must include `file_path:line_number`.
 - Focus on the core happy path. If the feature is complex, prioritize the primary flow over edge cases.
+- Output language must match the user's query language.
