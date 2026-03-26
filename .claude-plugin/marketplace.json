@@ -37,6 +37,12 @@
       "source": "./plugins/feature-explorer",
       "description": "深入解析代码仓库中某个功能的实现原理，追踪调用链、梳理数据流、输出结构化报告",
       "version": "1.0.0"
+    },
+    {
+      "name": "team-planner",
+      "source": "./plugins/team-planner",
+      "description": "根据需求调研代码仓库现状，设计多 Agent 团队方案（角色、任务、依赖、执行顺序）",
+      "version": "1.0.0"
     }
   ]
 }
