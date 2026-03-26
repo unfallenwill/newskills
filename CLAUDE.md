@@ -20,7 +20,7 @@
 
 ## 规则与约束
 
-1. **创建或修改插件后，必须同步更新** `.claude-plugin/marketplace.json` 的 `plugins` 数组
+1. **创建或修改插件后，必须同步更新** `.claude-plugin/marketplace.json` 的 `plugins` 数组、插件的 `README.md` 和仓库根目录的 `README.md`
 2. **文件路径必须使用相对路径**（以 `./` 开头），禁止绝对路径
 3. **`plugin.json` 至少包含 `name` 字段**，JSON 格式必须有效
 4. **Skills 必须有 `name` 和 `description`** frontmatter，description 决定自动调用
