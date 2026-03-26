@@ -2,7 +2,12 @@
 # ruff-auto-format: Auto-format Python files after Write/Edit
 set -euo pipefail
 
-FILE="$1"
+# Read tool call info from stdin JSON
+INPUT=$(cat)
+FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty')
+
+# Skip if no file path found
+[[ -z "$FILE" ]] && exit 0
 
 # Convert path to Windows-native format for ruff (which is a native Windows binary).
 # Handles both Unix-style (/c/Users/...) and mixed (C:\Users\...) paths.
@@ -23,8 +28,8 @@ command -v ruff &>/dev/null || {
 }
 
 # Format and fix
-ruff format "$FILE" 2>/dev/null
-ruff check --fix "$FILE" 2>/dev/null
+ruff format "$FILE" 2>&1 || true
+ruff check --fix "$FILE" 2>&1 || true
 
 # Report remaining issues for Claude to fix
 REMAINING=$(ruff check "$FILE" 2>&1) || true

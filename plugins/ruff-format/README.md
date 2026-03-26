@@ -28,3 +28,8 @@ ruff format + check --fix  → 静默修复
 
 - 安装 [ruff](https://docs.astral.sh/ruff/)（`pip install ruff`）
 - 项目中建议配置 `pyproject.toml` 或 `ruff.toml`（未配置时使用 ruff 默认值）
+
+## 已知限制
+
+- 每次 Write/Edit 都会触发三次 ruff 调用（format + check --fix + check），重构场景下可能较慢
+- ruff format 修改磁盘文件后，Claude 内部缓存与磁盘文件可能短暂不同步，后续操作前 Claude 会重新读取文件
