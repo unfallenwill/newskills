@@ -4,13 +4,15 @@ description: >-
   Query and analyze observability data from VictoriaMetrics, VictoriaLogs, and VictoriaTraces.
   This skill should be used when the user wants to "query metrics", "check logs",
   "search traces", "analyze observability data", "debug with metrics",
-  "find errors in logs", "trace a request", "check VictoriaMetrics",
-  "query VictoriaLogs", "search VictoriaTraces", "query MetricsQL",
-  "query LogsQL", "search Jaeger traces",
+  "find errors in logs", "trace a request",
+  "service is down", "service is slow", "latency spike", "error rate",
+  "502 errors", "500 errors", "HTTP errors", "debug production issue",
+  "outage", "check deployment", "verify deployment",
+  "CPU usage", "memory usage", "disk full",
   "查询指标", "查看日志", "搜索链路", "分析可观测数据",
   "查一下 metrics", "看下日志有什么错误", "追踪一下这个请求",
   "通过 metrics 验证部署效果", "通过指标检查服务状态",
-  "查 VictoriaMetrics", "看 VictoriaLogs", "搜 VictoriaTraces",
+  "服务挂了", "服务慢", "延迟飙升", "错误率", "排查线上问题", "部署后验证",
   or mentions analyzing metrics, logs, or distributed traces from
   VictoriaMetrics, VictoriaLogs, or VictoriaTraces.
   Do NOT use for GitHub issues, code analysis, or file editing.
@@ -28,6 +30,7 @@ Before using this skill, verify these environment variables are set:
 - `VICTORIA_METRICS_URL` — VictoriaMetrics endpoint (e.g. `http://localhost:8428`)
 - `VICTORIA_LOGS_URL` — VictoriaLogs endpoint (e.g. `http://localhost:9429`)
 - `VICTORIA_TRACES_URL` — VictoriaTraces endpoint (e.g. `http://localhost:9428`)
+- `VICTORIA_AUTH_TOKEN` — (optional) Bearer token for authenticated endpoints
 
 If any variable is missing, inform the user which one needs to be configured.
 
@@ -52,6 +55,13 @@ node $SCRIPT <service> <action> [args...] [--start <time>] [--end <time>] [--lim
 - **Jaeger API compatibility**: VictoriaTraces uses Jaeger-compatible API. Durations use Go format (`500ms`, `1s`, `5m`). Tags are JSON objects. `--service` is required for `traces search`.
 - **Output**: Default output is formatted JSON. Use `--raw` for raw API response. Trace output is compact by default (summary with span count, duration, services); use `--verbose` for full span-level details.
 
+## Troubleshooting
+
+- **HTTP 401/403**: The endpoint requires auth. Set `VICTORIA_AUTH_TOKEN` environment variable.
+- **Empty metrics results**: Metric names differ per environment. Run `metrics label-values __name__` to discover actual names, then adjust queries.
+- **Empty logs results**: Run `logs streams` to discover available stream labels, then adjust `_stream:{...}` filters.
+- **Connection refused**: Verify the URL and port are correct and the service is running.
+
 ---
 
 ## Diagnostic Workflow
@@ -64,6 +74,23 @@ Ask or infer:
 - What service/endpoint is affected?
 - When did the issue start? (time range)
 - What symptoms? (errors, latency, throughput drop)
+
+### Phase 1.5: Discover Available Data (if unfamiliar environment)
+
+Before running specific queries, discover what data actually exists:
+
+```bash
+# Discover metric names
+node $SCRIPT metrics label-values __name__
+
+# Discover log stream labels
+node $SCRIPT logs streams
+
+# Discover trace services
+node $SCRIPT traces services
+```
+
+Adjust the query templates below to use the actual names discovered. The examples use common OTEL names (`http_requests_total`, `_stream:{app="..."}`) but your environment may differ.
 
 ### Phase 2: Metrics — Detect Anomalies
 

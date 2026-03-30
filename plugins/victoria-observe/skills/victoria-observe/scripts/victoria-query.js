@@ -62,6 +62,15 @@ function formatTimestamp(unixSec) {
 }
 
 // ---------------------------------------------------------------------------
+// Auth helper
+// ---------------------------------------------------------------------------
+
+function getAuthHeaders() {
+  const token = process.env.VICTORIA_AUTH_TOKEN;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ---------------------------------------------------------------------------
 // HTTP request helper (zero dependencies)
 // ---------------------------------------------------------------------------
 
@@ -69,7 +78,7 @@ function httpRequest(targetUrl) {
   return new Promise((resolve, reject) => {
     const parsed = new url.URL(targetUrl);
     const mod = parsed.protocol === 'https:' ? https : http;
-    const req = mod.get(targetUrl, { timeout: 30000 }, (res) => {
+    const req = mod.get(targetUrl, { timeout: 30000, headers: getAuthHeaders() }, (res) => {
       const chunks = [];
       res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
@@ -86,12 +95,56 @@ function httpRequest(targetUrl) {
   });
 }
 
+// HTTP POST for metrics queries — avoids URL length limits with complex MetricsQL
+function httpPost(targetUrl, formParams) {
+  return new Promise((resolve, reject) => {
+    const bodyStr = Object.entries(formParams)
+      .filter(([, v]) => v !== undefined && v !== null && v !== '')
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('&');
+    const parsed = new url.URL(targetUrl);
+    const mod = parsed.protocol === 'https:' ? https : http;
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(bodyStr),
+        ...getAuthHeaders(),
+      },
+      timeout: 30000,
+    };
+    const req = mod.request(targetUrl, options, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf-8');
+        if (res.statusCode >= 400) {
+          reject(new Error(`HTTP ${res.statusCode}: ${body.slice(0, 500)}`));
+        } else {
+          resolve(body);
+        }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
+    req.write(bodyStr);
+    req.end();
+  });
+}
+
 // Streaming HTTP request for tail - keeps connection open, calls onLine for each NDJSON line
-function httpStream(targetUrl, onLine) {
+function httpStream(targetUrl, onLine, timeoutMs) {
   return new Promise((resolve, reject) => {
     const parsed = new url.URL(targetUrl);
     const mod = parsed.protocol === 'https:' ? https : http;
-    const req = mod.get(targetUrl, { timeout: 0 }, (res) => {
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      req.destroy();
+      resolve();
+    };
+    const req = mod.get(targetUrl, { timeout: 0, headers: getAuthHeaders() }, (res) => {
       if (res.statusCode >= 400) {
         const chunks = [];
         res.on('data', (c) => chunks.push(c));
@@ -109,12 +162,19 @@ function httpStream(targetUrl, onLine) {
       });
       res.on('end', () => {
         if (buffer.trim()) onLine(buffer);
-        resolve();
+        cleanup();
       });
     });
     req.on('error', reject);
-    // Handle Ctrl+C gracefully
-    process.on('SIGINT', () => { req.destroy(); resolve(); });
+    // Cross-platform exit handling
+    process.once('SIGINT', cleanup);
+    // stdin close fires when parent kills child process (works on Windows)
+    if (process.stdin.isTTY === undefined || !process.stdin.isTTY) {
+      process.stdin.resume();
+      process.stdin.once('end', cleanup);
+    }
+    // Timeout auto-stop
+    if (timeoutMs > 0) setTimeout(cleanup, timeoutMs);
   });
 }
 
@@ -270,8 +330,7 @@ async function cmdMetricsQuery(positional, flags) {
   if (!query) throw new Error('Usage: metrics query <MetricsQL expression>');
   const base = buildBaseUrl('VICTORIA_METRICS_URL');
   const params = { query, time: flags.time ? parseTime(flags.time) : undefined };
-  const u = buildUrl(base, 'api/v1/query', params);
-  const body = await httpRequest(u);
+  const body = await httpPost(`${base}/api/v1/query`, params);
   outputJson(JSON.parse(body), flags.raw);
 }
 
@@ -287,8 +346,7 @@ async function cmdMetricsRange(positional, flags) {
     end: String(end),
     step: flags.step || '5m',
   };
-  const u = buildUrl(base, 'api/v1/query_range', params);
-  const body = await httpRequest(u);
+  const body = await httpPost(`${base}/api/v1/query_range`, params);
   outputJson(JSON.parse(body), flags.raw);
 }
 
@@ -324,8 +382,8 @@ async function cmdMetricsSeries(positional, flags) {
   if (flags.start) params.start = String(parseTime(flags.start));
   if (flags.end) params.end = String(parseTime(flags.end));
   if (flags.limit) params.limit = flags.limit;
-  const u = buildUrl(base, 'api/v1/series', params);
-  const body = await httpRequest(u);
+  else params.limit = '100';
+  const body = await httpPost(`${base}/api/v1/series`, params);
   outputJson(JSON.parse(body), flags.raw);
 }
 
@@ -336,8 +394,7 @@ async function cmdMetricsExport(positional, flags) {
   const params = { 'match[]': match };
   if (flags.start) params.start = String(parseTime(flags.start));
   if (flags.end) params.end = String(parseTime(flags.end));
-  const u = buildUrl(base, 'api/v1/export', params);
-  const body = await httpRequest(u);
+  const body = await httpPost(`${base}/api/v1/export`, params);
   // Export returns NDJSON
   if (flags.raw) {
     console.log(body);
@@ -362,6 +419,7 @@ async function cmdLogsQuery(positional, flags) {
   if (flags.start) params.start = String(Math.round(parseTime(flags.start)));
   if (flags.end) params.end = String(Math.round(parseTime(flags.end)));
   if (flags.limit) params.limit = flags.limit;
+  else params.limit = '100';
   const u = buildUrl(base, 'select/logsql/query', params);
   const body = await httpRequest(u);
   formatLogsResponse(body, flags.raw);
@@ -397,6 +455,7 @@ async function cmdLogsFieldValues(positional, flags) {
   if (flags.start) params.start = String(Math.round(parseTime(flags.start)));
   if (flags.end) params.end = String(Math.round(parseTime(flags.end)));
   if (flags.limit) params.limit = flags.limit;
+  else params.limit = '100';
   const u = buildUrl(base, 'select/logsql/field_values', params);
   const body = await httpRequest(u);
   outputJson(JSON.parse(body), flags.raw);
@@ -421,8 +480,9 @@ async function cmdLogsTail(positional, flags) {
   if (flags.start) params.start = String(Math.round(parseTime(flags.start)));
   if (flags['refresh-interval']) params.refresh_interval = flags['refresh-interval'];
   const u = buildUrl(base, 'select/logsql/tail', params);
+  const timeoutSec = parseInt(flags.timeout, 10) || 60;
 
-  console.error(`Tailing logs... (Ctrl+C to stop)`);
+  console.error(`Tailing logs... (timeout: ${timeoutSec}s, Ctrl+C to stop)`);
   console.error(`Query: ${query}`);
   console.error('---');
 
@@ -438,11 +498,9 @@ async function cmdLogsTail(positional, flags) {
     } catch {
       console.log(line);
     }
-  });
+  }, timeoutSec * 1000);
 }
 
-// ---------------------------------------------------------------------------
-// Traces commands (Jaeger-compatible API)
 // ---------------------------------------------------------------------------
 
 async function cmdTracesServices(positional, flags) {
@@ -569,11 +627,13 @@ Options:
   --limit <n>        Limit number of results
   --raw              Output raw JSON without formatting
   --verbose          Show full trace span details (traces commands)
+  --timeout <sec>    Tail duration in seconds (default: 60, logs tail only)
 
 Environment variables:
   VICTORIA_METRICS_URL   VictoriaMetrics URL (e.g. http://localhost:8428)
   VICTORIA_LOGS_URL      VictoriaLogs URL (e.g. http://localhost:9429)
   VICTORIA_TRACES_URL    VictoriaTraces URL (e.g. http://localhost:9428)
+  VICTORIA_AUTH_TOKEN    Optional Bearer token for authenticated endpoints
 `.trim());
 }
 
