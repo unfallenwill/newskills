@@ -37,6 +37,12 @@
       "source": "./plugins/victoria-observe",
       "description": "VictoriaMetrics 生态领域知识扩展：MetricsQL、LogsQL、PromQL 查询语言及 VictoriaMetrics/VictoriaLogs/VictoriaTraces HTTP API 参考",
       "version": "1.0.0"
+    },
+    {
+      "name": "postman-testgen",
+      "source": "./plugins/postman-testgen",
+      "description": "为 API 生成 Postman v2.1.0 测试集合，支持三层验证：HTTP 响应断言、VictoriaTraces 调用链验证、VictoriaLogs 业务日志验证",
+      "version": "0.1.0"
     }
   ]
 }

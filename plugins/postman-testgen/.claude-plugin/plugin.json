@@ -1,0 +1,10 @@
+{
+  "name": "postman-testgen",
+  "version": "0.1.0",
+  "description": "Generate Postman v2.1.0 test collections with three-layer verification: HTTP response, VictoriaTraces call chain, and VictoriaLogs business logs",
+  "author": {
+    "name": "qingshan"
+  },
+  "skills": "./skills/",
+  "agents": "./agents/"
+}
