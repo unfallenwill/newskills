@@ -6,19 +6,39 @@ user-invocable: false
 
 # VictoriaTraces API Reference
 
-VictoriaTraces provides Jaeger-compatible HTTP API for querying distributed traces.
+VictoriaTraces provides Jaeger-compatible HTTP API for querying distributed traces. It is built on top of VictoriaLogs and additionally supports LogsQL-based querying for trace spans.
 
 ## Endpoints Overview
 
 | Endpoint | Purpose |
 |----------|---------|
 | `/select/jaeger/api/services` | List all services |
-| `/select/jaeger/api/services/<service>/operations` | List operations for a service |
+| `/select/jaeger/api/services/<service>/operations` | List operations (span names) for a service |
 | `/select/jaeger/api/traces` | Search traces |
 | `/select/jaeger/api/traces/<traceID>` | Get trace by ID |
-| `/select/jaeger/api/dependencies` | Service dependency graph |
+| `/select/jaeger/api/dependencies` | Service dependency graph (experimental) |
 
-Base URL: `http://<victoria-traces>:10428`
+VictoriaTraces also provides all VictoriaLogs querying endpoints (e.g., `/select/logsql/query`, `/select/logsql/hits`, `/select/logsql/field_names`) since it is built on VictoriaLogs.
+
+### Cluster URLs
+
+| Component | URL Pattern | Port |
+|-----------|-------------|------|
+| vtselect | `http://<vtselect>:8481/select/<accountID>/...` | 8481 |
+| vtinsert | `http://<vtinsert>:8480/insert/<accountID>/...` | 8480 |
+
+Single-node base URL: `http://<victoria-traces>:10428`
+
+## Multi-Tenancy
+
+Default tenant: `(AccountID=0, ProjectID=0)`. Override via headers:
+
+```bash
+curl -H 'AccountID: 12' -H 'ProjectID: 34' \
+  http://localhost:10428/select/jaeger/api/traces?service=checkout
+```
+
+The `AccountID` and `ProjectID` headers apply to both ingestion and querying. If omitted, both default to `0`.
 
 ## List Services
 
@@ -31,6 +51,8 @@ Response:
 {
   "data": ["accounting", "ad", "cart", "checkout", "currency"],
   "errors": null,
+  "limit": 0,
+  "offset": 0,
   "total": 5
 }
 ```
@@ -46,6 +68,8 @@ Response:
 {
   "data": ["HTTP POST", "orders publish", "oteldemo.CartService/EmptyCart"],
   "errors": null,
+  "limit": 0,
+  "offset": 0,
   "total": 5
 }
 ```
@@ -69,24 +93,33 @@ Response:
 
 ### Duration Format
 
-Go `time.Duration`: integer + unit suffix (`ms`, `s`, `m`)
+Go `time.Duration` format: integer + unit suffix.
 
-Examples: `100ms`, `500ms`, `1s`, `2.5s`, `5m`
+Supported suffixes: `ns` (nanoseconds), `us` or `µs` (microseconds), `ms` (milliseconds), `s` (seconds), `m` (minutes), `h` (hours).
+
+Examples: `100ms`, `500ms`, `1s`, `2.5s`, `5m`, `1h`
 
 ### Tags (Enhanced Filtering)
 
-VictoriaTraces supports filtering by span attributes, resource attributes, and scope attributes:
+VictoriaTraces supports filtering by span attributes, resource attributes, and scope attributes using a JSON object passed as the `tags` parameter:
 
-```
+```bash
 # Span attributes (default)
 tags={"rpc.method":"Convert"}
 
-# Resource attributes
+# Resource attributes (use resource_attr: prefix)
 tags={"resource_attr:service.namespace":"opentelemetry-demo"}
 
-# Scope attributes
+# Scope attributes (use scope_attr: prefix)
 tags={"scope_attr:otel.scope.name":"checkout"}
 ```
+
+**Note**: The `tags` parameter must be URL-encoded when passed in the query string. For example, `{"error":"true"}` becomes `%7B%22error%22%3A%22true%22%7D`.
+
+Under the hood, VictoriaTraces stores attributes with prefixes:
+- `resource_attr:` — for resource attributes
+- `scope_attr:` — for scope (instrumentation) attributes
+- `span_attr:` — for span attributes
 
 ### Example Queries
 
@@ -132,8 +165,13 @@ curl "http://localhost:10428/select/jaeger/api/traces?service=checkout&operation
         "serviceName": "checkout",
         "tags": [{"key": "service.namespace", "value": "opentelemetry-demo"}]
       }
-    }
-  }]
+    },
+    "warnings": null
+  }],
+  "errors": null,
+  "limit": 20,
+  "offset": 0,
+  "total": 1
 }
 ```
 
@@ -144,17 +182,26 @@ Key fields per span:
 - `references[]`: Parent-child relationships (`CHILD_OF`)
 - `processID`: Links to process info (service name + resource attributes)
 
+Top-level response fields:
+- `data`: Array of trace objects
+- `errors`: Error messages (or `null`)
+- `limit`: Maximum number of traces returned
+- `offset`: Pagination offset
+- `total`: Total number of matching traces
+
 ## Get Trace by ID
 
 ```bash
 curl http://localhost:10428/select/jaeger/api/traces/9e06226196051d9c3c10dfab343791ad
 ```
 
-Returns full trace with all spans, processes, and service mapping.
+Returns full trace with all spans, processes, and service mapping. Response format is the same as search, with `limit`, `offset`, `total`, `errors` top-level fields.
 
-## Service Dependencies
+## Service Dependencies (Experimental)
 
 **GET** `/select/jaeger/api/dependencies`
+
+> **Note**: This feature is **experimental**. To enable it, set `-servicegraph.enableTask=true` on VictoriaTraces single-node or `vtstorage` (cluster mode).
 
 ```bash
 curl "http://localhost:10428/select/jaeger/api/dependencies?endTs=1758213428616&lookback=60000"
@@ -190,8 +237,12 @@ GET /select/jaeger/api/traces?service={service}&limit=20
 # 4. Get trace details
 GET /select/jaeger/api/traces/{traceID}
 
-# 5. View service graph
+# 5. View service graph (experimental, requires -servicegraph.enableTask=true)
 GET /select/jaeger/api/dependencies?endTs={now_ms}&lookback=3600000
+
+# 6. Query trace spans via LogsQL (VictoriaLogs-compatible endpoints)
+GET /select/logsql/query?query=_time:5m AND span_attr:error
+GET /select/logsql/field_names?query=_time:5m
 ```
 
 ## Notes
@@ -199,6 +250,9 @@ GET /select/jaeger/api/dependencies?endTs={now_ms}&lookback=3600000
 - `service` parameter is **required** for trace search
 - Time parameters (`start`, `end`) are in **microseconds** (not milliseconds or seconds)
 - Dependencies `endTs` is in **milliseconds**
-- Duration filters use Go format (`500ms`, `1s`, `5m`), not PromQL format
+- Duration filters use Go format (`500ms`, `1s`, `5m`, `1h`), not PromQL format
 - Tags must be URL-encoded JSON objects
+- VictoriaTraces is built on VictoriaLogs and supports all VictoriaLogs querying endpoints (LogsQL)
+- Multi-tenancy via `AccountID` and `ProjectID` HTTP headers (default to `0`)
 - Web UI available at `http://<victoria-traces>:10428/select/vmui`
+- Default port: **10428** (cluster: vtselect **8481**, vtinsert **8480**)
