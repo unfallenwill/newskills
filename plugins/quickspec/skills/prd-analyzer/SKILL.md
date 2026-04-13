@@ -1,7 +1,7 @@
 ---
 name: prd-analyzer
 description: >
-  内部步骤（Task 2），由 spec-generator 编排器调用，不从用户直接触发。
+  内部步骤（Task 2），由 generator 编排器调用，不从用户直接触发。
   对 PRD 内容进行 5-zone 结构化分析，提取功能、用户故事、业务实体、约束和验收条件。
 user-invocable: false
 context: fork

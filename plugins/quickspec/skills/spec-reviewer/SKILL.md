@@ -1,7 +1,7 @@
 ---
 name: spec-reviewer
 description: >
-  内部步骤（Task 5），由 spec-generator 编排器调用，不从用户直接触发。
+  内部步骤（Task 5），由 generator 编排器调用，不从用户直接触发。
   对规格文档进行结构化质量审查，检查 PRD 覆盖度、任务可操作性和验收条件可测试性。
 user-invocable: false
 context: fork

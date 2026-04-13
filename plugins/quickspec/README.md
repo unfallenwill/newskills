@@ -1,4 +1,4 @@
-# spec-generator
+# quickspec
 
 将 PRD 产品需求文档转化为 Coding Agent 可直接执行的精确实现规格文档。
 
@@ -17,17 +17,17 @@
 ## 使用方式
 
 ```
-/spec-generator <PRD 来源：文件路径 | 文本内容>
+/generator <PRD 来源：文件路径 | 文本内容>
 ```
 
 ## 结构
 
 ```
-spec-generator/
+quickspec/
 ├── .claude-plugin/
 │   └── plugin.json
 ├── skills/
-│   ├── spec-generator/       # 编排器（入口 skill）
+│   ├── generator/            # 编排器（入口 skill）
 │   ├── prd-loader/           # 步骤 1：加载 PRD
 │   ├── prd-analyzer/         # 步骤 2：PRD 分析
 │   ├── codebase-mapper/      # 步骤 3：代码库映射

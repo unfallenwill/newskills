@@ -1,5 +1,5 @@
 ---
-name: spec-generator
+name: generator
 description: >
   将产品需求文档（PRD）转化为精确的、编码 Agent 可直接执行的实现规格文档。
   触发：用户要生成 spec / 规格文档 / 实现方案，或要把 PRD 转成可执行规格。

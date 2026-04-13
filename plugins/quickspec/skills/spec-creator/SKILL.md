@@ -1,7 +1,7 @@
 ---
 name: spec-creator
 description: >
-  内部步骤（Task 4），由 spec-generator 编排器调用，不从用户直接触发。
+  内部步骤（Task 4），由 generator 编排器调用，不从用户直接触发。
   从 PRD 分析和代码库映射结果生成精确的、编码 Agent 可执行的实现规格文档。
 user-invocable: false
 context: fork

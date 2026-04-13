@@ -1,7 +1,7 @@
 ---
 name: codebase-mapper
 description: >
-  内部步骤（Task 3），由 spec-generator 编排器调用，不从用户直接触发。
+  内部步骤（Task 3），由 generator 编排器调用，不从用户直接触发。
   将 PRD 需求映射到代码库，识别技术栈、相关模块、编码约定和扩展点。
 user-invocable: false
 context: fork
