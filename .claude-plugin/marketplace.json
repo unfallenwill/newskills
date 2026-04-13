@@ -27,12 +27,6 @@
       "version": "1.0.0"
     },
     {
-      "name": "team-planner",
-      "source": "./plugins/team-planner",
-      "description": "根据需求调研代码仓库现状，设计多 Agent 团队方案（角色、任务、依赖、执行顺序）",
-      "version": "1.0.0"
-    },
-    {
       "name": "victoria-observe",
       "source": "./plugins/victoria-observe",
       "description": "VictoriaMetrics 生态领域知识扩展：MetricsQL、LogsQL、PromQL 查询语言及 VictoriaMetrics/VictoriaLogs/VictoriaTraces HTTP API 参考",
