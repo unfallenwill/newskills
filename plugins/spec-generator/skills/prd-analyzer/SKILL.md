@@ -2,13 +2,13 @@
 name: prd-analyzer
 description: >
   内部步骤（Task 2），由 spec-generator 编排器调用，不从用户直接触发。
-  对 PRD 内容进行 5-zone 结构化分析，提取功能、用户故事、数据模型、约束和验收条件。
+  对 PRD 内容进行 5-zone 结构化分析，提取功能、用户故事、业务实体、约束和验收条件。
 user-invocable: false
 context: fork
 allowed-tools:
   - Read
   - Write
-  - AskUserQuestion
+  - Edit
 ---
 
 # 步骤 2：PRD 分析
@@ -17,16 +17,26 @@ allowed-tools:
 
 ## 输入输出
 
-- **输入**: `$ARGUMENTS/prd-source.md`（由 prd-loader 产出）
-- **输出**: `$ARGUMENTS/prd-analysis.md`
+- **输入**: `${ARGUMENTS}/prd-source.md`（由 prd-loader 产出），`${ARGUMENTS}` 为编排器传入的 {workspace} 绝对路径（无尾部斜杠）
+- **输出**: `${ARGUMENTS}/prd-analysis.md`
 
 ## 执行流程和规范
 
 ### 读取输入
 
-使用 Read 工具读取 `$ARGUMENTS/prd-source.md`，获取 PRD 原始内容。从元数据头中提取 `feature-name` 用于后续引用。
+使用 Read 工具读取 `${ARGUMENTS}/prd-source.md`，获取 PRD 原始内容。从元数据头中提取 `feature-name` 用于后续引用。
 
-对已加载的 PRD 内容应用五区域提取框架，按顺序处理每个区域。
+### 输入验证
+
+读取 PRD 后，执行以下验证：
+
+1. **文件存在性检查** — Read 工具失败 → 返回 `STATUS: failed`，`ISSUES: "无法读取 prd-source.md"`
+2. **内容长度检查**
+   - 内容为空（0 字符）→ 返回 `STATUS: failed`，`ISSUES: "PRD 内容为空"`
+   - 内容过短（< 100 字符）→ 返回 `STATUS: partial`，`WARNINGS: "PRD 内容过短，可能包含不完整信息"`
+3. **元数据完整性检查** — 缺少 feature-name → 返回 `STATUS: failed`，`ISSUES: "prd-source.md 缺少 feature-name 元数据"`
+
+验证通过后，对 PRD 内容应用五区域提取框架，按顺序处理每个区域。
 
 ### 区域 1：功能识别
 
@@ -62,22 +72,17 @@ F{n}: <功能名称>
 - 预期结果（应该发生什么）
 - 错误处理（出错时怎么处理）
 
-### 区域 3：数据模型和接口
+### 区域 3：业务实体与交互需求
 
-提取实体及其字段、关系和 API 定义：
+提取 PRD 中描述的业务层面的实体、属性、关系和交互需求（不提取技术实现细节）：
 
-1. **识别实体** — 在需求中反复出现的名词（用户、订单、商品）
-2. **提取字段** — 属性、类型、校验规则、默认值
-3. **映射关系** — 一对多、多对多、组合
-4. **提取 API 端点** — 方法、路径、请求/响应结构
-5. **识别状态流转** — 实体生命周期和状态机
+1. **识别业务实体** — 在需求中反复出现的名词（用户、订单、商品）
+2. **提取业务属性** — PRD 中描述的实体属性（如"订单有金额、状态、创建时间"），使用业务语言记录，不推导技术类型
+3. **映射实体关系** — 业务层面的关联（一对多、多对多、组合），说明关系含义
+4. **提取交互需求** — PRD 中描述的系统交互（如"用户提交订单时需要校验库存"），记录交互意图而非 API 设计
+5. **识别状态流转** — 实体的业务生命周期（如订单：待支付→已支付→已发货→已完成），使用 PRD 中的原始描述
 
-对于 API，提取：
-- HTTP 方法和路径
-- 请求参数（query、body、headers）
-- 响应结构（成功和错误）
-- 鉴权要求
-- 限流或分页
+**注意**：本区域只提取 PRD 中已有的业务描述。具体的字段类型、校验规则、API 方法/路径/请求响应结构等技术规格由 spec-creator（步骤 4）结合代码库映射结果来生成。
 
 ### 区域 4：约束条件
 
@@ -88,6 +93,8 @@ F{n}: <功能名称>
 3. **兼容性** — 浏览器/设备支持、API 版本控制、向后兼容
 4. **业务规则** — 校验逻辑、计算公式、工作流限制
 5. **合规性** — 监管要求、数据保留、隐私规则
+
+**注意**：只提取 PRD 中明确提到的业务约束，不推导技术实现方案（如"使用 Redis 缓存"）。
 
 ### 区域 5：验收条件
 
@@ -103,12 +110,12 @@ F{n}: <功能名称>
 
 PRD 有多种格式，需要适配提取方法。
 
-不同 PRD 格式的详细提取策略，参考：
-- **`${CLAUDE_PLUGIN_ROOT}/skills/prd-analyzer/references/extraction-patterns.md`** — 结构化、自由文本和混合 PRD 的详细提取模式
+各 zone 的详细提取信号（信号词、判断标准、注意事项），参考：
+- **`${CLAUDE_PLUGIN_ROOT}/skills/prd-analyzer/references/extraction-patterns.md`** — 按信息类型组织的提取信号和启发式规则
 
 ## 歧义检测
 
-将以下情况标记为需要用户确认的歧义：
+将以下情况标记为歧义（不使用 AskUserQuestion，写入产出文件的"歧义（需确认）"章节，由编排器在检查点统一展示给用户确认）：
 
 - **模糊量词**："快速"、"大量"、"很多" — 请求具体数字
 - **缺失错误处理**：场景只描述了正常流程 — 询问错误情况
@@ -116,18 +123,27 @@ PRD 有多种格式，需要适配提取方法。
 - **冲突需求**：两个需求互相矛盾 — 询问优先级
 - **缺失边界情况**：没有提及空状态、零结果或边界值 — 标记缺失
 
-发现歧义时，以编号列表的形式提出具体问题，而非模糊的担忧。
+发现歧义时，以编号列表的形式提出具体问题，写入产出文件的"歧义（需确认）"章节。
+
+**重要**：歧义不使用 AskUserQuestion 询问，由编排器在检查点统一展示给用户确认。
 
 ### 写入产出
 
-使用 `${CLAUDE_PLUGIN_ROOT}/skills/prd-analyzer/references/output-template.md` 作为结构模板，将提取的分析结果写入 `$ARGUMENTS/prd-analysis.md`：
+使用 `${CLAUDE_PLUGIN_ROOT}/skills/prd-analyzer/references/output-template.md` 作为结构模板，将提取的分析结果写入 `${ARGUMENTS}/prd-analysis.md`：
 
 1. 按模板结构填充分析结果
 2. 使用 Write 工具写入文件
 
 ### 质量门禁自检
 
-读取 `${CLAUDE_PLUGIN_ROOT}/skills/prd-analyzer/references/quality-gate.md`，逐项核对产出物 `$ARGUMENTS/prd-analysis.md` 是否满足所有验收标准。如有未通过的项，使用 Edit 工具修复产出文件后重新核对。最多重试 2 次，仍未通过则将未通过项记入返回状态的 issues 中。
+读取 `${CLAUDE_PLUGIN_ROOT}/skills/prd-analyzer/references/quality-gate.md`，逐项核对产出物 `${ARGUMENTS}/prd-analysis.md` 是否满足所有验收标准：
+
+1. **全部通过** — 继续，返回编排器
+2. **有未通过的项**：
+   - 使用 Edit 工具修复产出文件
+   - 重新核对
+   - 最多重试 2 次
+   - 仍未通过则返回 `STATUS: partial`，`ISSUES: "质量门禁未通过：{未通过项列表}"`
 
 ### 返回编排器
 
@@ -136,7 +152,9 @@ PRD 有多种格式，需要适配提取方法。
 ```
 [STATUS: success | partial | failed]
 [OUTPUT: prd-analysis.md]
-[WARNINGS: 警告列表，没有则为 none]
-[ISSUES: 阻塞问题列表，没有则为 none]
-[SUMMARY: 一句话摘要]
+[FEATURE-NAME: <从 prd-source.md 元数据提取>]
+[WARNINGS: <警告列表，没有则为 none>]
+[ISSUES: <阻塞问题列表，没有则为 none>]
+[AMBIGUITY-COUNT: <歧义数量，无歧义则为 0>]
+[SUMMARY: <一句话摘要，包含歧义数量提示>]
 ```

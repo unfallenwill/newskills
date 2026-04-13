@@ -24,13 +24,13 @@ allowed-tools:
 
 ### 读取输入
 
-1. 使用 Read 工具读取 `$ARGUMENTS/prd-analysis.md`，获取 PRD 分析结果（功能列表、数据模型、约束条件、验收条件）
+1. 使用 Read 工具读取 `$ARGUMENTS/prd-analysis.md`，获取 PRD 分析结果（功能列表、业务实体与交互需求、约束条件、验收条件）
 2. 使用 Read 工具读取 `$ARGUMENTS/codebase-mapping.md`，获取代码库上下文（技术栈、目录结构、相关模块、约定、扩展点）
 3. 从 prd-source.md 的元数据头中获取 `feature-name`，用于 spec 文件命名
 
 ### 任务拆解
 
-将每个 PRD 功能转化为有序的、可操作的实现任务。
+将每个 PRD 功能转化为有序的、可操作的实现任务。参考 prd-analysis.md 中的业务实体和交互需求，结合 codebase-mapping.md 中的技术栈和现有代码结构，将业务描述转化为具体的技术任务。
 
 #### 任务编写规则
 
@@ -78,6 +78,8 @@ allowed-tools:
 - **配置（Configure）** — 更新配置文件
 
 ### 数据模型与接口规格
+
+从 prd-analysis.md 中的业务实体、属性、关系和交互需求出发，结合 codebase-mapping.md 中的技术栈和代码约定，推导生成技术规格。
 
 #### 数据模型格式
 

@@ -17,15 +17,15 @@ allowed-tools:
 
 ## 输入输出
 
-- **输入**: `$ARGUMENTS/prd-source.md`（原始 PRD）+ `$ARGUMENTS/prd-analysis.md`（分析报告）+ `$ARGUMENTS/{feature-name}-spec.md`（规格文档）
-- **输出**: `$ARGUMENTS/review-report.md`
+- **输入**: `${ARGUMENTS}/prd-source.md`（原始 PRD）+ `${ARGUMENTS}/prd-analysis.md`（分析报告）+ `${ARGUMENTS}/{feature-name}-spec.md`（规格文档）
+- **输出**: `${ARGUMENTS}/review-report.md`
 
 ## 执行流程和规范
 
 ### 读取输入
 
 1. 使用 Read 工具读取 `$ARGUMENTS/prd-source.md`，获取原始 PRD 内容，从元数据头中提取 `feature-name`
-2. 使用 Read 工具读取 `$ARGUMENTS/prd-analysis.md`，获取 PRD 分析结果（功能列表、验收条件）
+2. 使用 Read 工具读取 `$ARGUMENTS/prd-analysis.md`，获取 PRD 分析结果（功能列表、业务实体与交互需求、验收条件）
 3. 使用 Read 工具读取 `$ARGUMENTS/{feature-name}-spec.md`，获取待审查的规格文档
 
 ### 审查流程
@@ -57,16 +57,18 @@ allowed-tools:
 
 #### 4. 验证数据模型
 
-检查每个实体：
+对照 prd-analysis.md 中的业务实体和交互需求，检查 spec 中的数据模型是否完整覆盖：
 
-- 所有字段是否有类型
-- 校验规则是否指定
-- 关联关系是否清晰
+- 每个业务实体是否在 spec 中有对应的数据模型
+- 业务属性是否已转化为具体字段（含类型、校验规则）
+- 实体关系是否正确反映
 - 索引是否合理
 
 #### 5. 验证接口
 
-检查每个 API 端点：
+对照 prd-analysis.md 中的交互需求，检查 spec 中的 API 接口是否完整覆盖：
+
+- 每个交互需求是否在 spec 中有对应的 API 端点
 
 - 请求参数是否完整（含类型、位置、必填性）
 - 成功响应结构是否定义
