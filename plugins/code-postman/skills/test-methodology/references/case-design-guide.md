@@ -165,7 +165,7 @@ pm.test("[正向] 提取变量供后续使用", () => {
 ```markdown
 ### TC-VAL-005: 业务异常-{description}
 - **描述**: {business_rule_description}
-- **请求数据`: {request_data}
+- **请求数据**: {request_data}
 - **预期结果**:
   - 状态码: {400/409/422}
   - 错误消息: {expected_error_message}
