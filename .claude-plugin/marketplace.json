@@ -9,12 +9,6 @@
   },
   "plugins": [
     {
-      "name": "cnb-issue",
-      "source": "./plugins/cnb-issue",
-      "description": "操作 CNB (cnb.cool) 平台上的 Issue，支持创建、查询、更新、标签管理、处理人管理和评论功能",
-      "version": "1.0.0"
-    },
-    {
       "name": "ruff-format",
       "source": "./plugins/ruff-format",
       "description": "在修改 Python 文件后自动执行 ruff format 和 ruff check --fix",
